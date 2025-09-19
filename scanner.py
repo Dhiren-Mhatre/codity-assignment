@@ -585,7 +585,6 @@ class CrossReferenceAnalyzer:
             source_module = import_info.source_module
 
             if imported_name not in self.definitions_by_name:
-                module_parts = source_module.split(".")
                 found_in_module = False
 
                 for module_variant in self._get_module_variants(source_module):
@@ -723,70 +722,73 @@ class CrossReferenceAnalyzer:
 
     def _is_standard_library_import(self, module_name: str) -> bool:
         python_stdlib = {
-            "os",
-            "sys",
-            "json",
-            "time",
-            "datetime",
-            "collections",
-            "itertools",
-            "functools",
-            "operator",
-            "re",
-            "math",
-            "random",
-            "urllib",
-            "http",
-            "asyncio",
-            "threading",
-            "multiprocessing",
-            "pathlib",
-            "typing",
-            "dataclasses",
-            "abc",
-            "contextlib",
-            "concurrent",
-            "concurrent.futures",
+            "os", "sys", "json", "time", "datetime", "collections", "itertools",
+            "functools", "operator", "re", "math", "random", "urllib", "http",
+            "asyncio", "threading", "multiprocessing", "pathlib", "typing",
+            "dataclasses", "abc", "contextlib", "concurrent", "socket", "ssl",
+            "hashlib", "hmac", "uuid", "logging", "argparse", "configparser",
+            "csv", "xml", "sqlite3", "pickle", "copy", "tempfile", "shutil",
+            "glob", "fnmatch", "linecache", "traceback", "warnings", "inspect"
+        }
+
+        go_stdlib = {
+            "fmt", "log", "os", "io", "net", "http", "context", "time", "sync",
+            "encoding", "strconv", "strings", "bytes", "bufio", "crypto", "hash",
+            "reflect", "sort", "path", "regexp", "math", "runtime", "testing",
+            "flag", "errors", "unsafe", "unicode", "database", "image", "html",
+            "text", "archive", "compress", "container", "debug", "go", "index",
+            "mime", "plugin"
+        }
+
+        java_stdlib = {
+            "java.lang", "java.util", "java.io", "java.net", "java.text",
+            "java.math", "java.security", "java.sql", "java.time", "java.nio",
+            "java.awt", "java.swing", "javax.swing", "java.beans", "java.rmi",
+            "java.applet", "javax.crypto", "javax.net", "javax.sql", "javax.xml"
         }
 
         js_builtins = {
-            "fs",
-            "path",
-            "util",
-            "events",
-            "stream",
-            "crypto",
-            "os",
-            "url",
-            "querystring",
-            "buffer",
-            "child_process",
-            "cluster",
-            "http",
-            "https",
+            "fs", "path", "util", "events", "stream", "crypto", "os", "url",
+            "querystring", "buffer", "child_process", "cluster", "http", "https",
+            "zlib", "readline", "repl", "vm", "worker_threads", "perf_hooks",
+            "dns", "net", "tls", "dgram", "console", "process", "timers"
+        }
+
+        c_stdlib = {
+            "stdio.h", "stdlib.h", "string.h", "math.h", "time.h", "ctype.h",
+            "limits.h", "float.h", "stddef.h", "stdint.h", "stdbool.h", "errno.h",
+            "assert.h", "setjmp.h", "signal.h", "stdarg.h", "locale.h", "wchar.h",
+            "wctype.h", "iostream", "vector", "string", "algorithm", "memory",
+            "functional", "iterator", "utility", "numeric", "fstream", "sstream",
+            "iomanip", "exception", "stdexcept", "typeinfo", "new"
         }
 
         popular_libs = {
-            "react",
-            "lodash",
-            "moment",
-            "axios",
-            "express",
-            "jquery",
-            "numpy",
-            "pandas",
-            "requests",
-            "flask",
-            "django",
-            "sklearn",
+            "react", "lodash", "moment", "axios", "express", "jquery",
+            "numpy", "pandas", "requests", "flask", "django", "sklearn",
+            "tensorflow", "pytorch", "matplotlib", "seaborn", "plotly",
+            "fastapi", "sqlalchemy", "pytest", "unittest", "mock"
         }
 
-        module_root = module_name.split(".")[0]
-        return (
-            module_root in python_stdlib
-            or module_root in js_builtins
-            or module_root in popular_libs
-        )
+        if module_name in python_stdlib or module_name in js_builtins or module_name in c_stdlib:
+            return True
+
+        module_parts = module_name.split("/")
+        if module_parts[0] in go_stdlib:
+            return True
+
+        if len(module_parts) >= 2 and "/".join(module_parts[:2]) in {
+            "encoding/json", "encoding/xml", "encoding/base64", "encoding/hex",
+            "net/http", "net/url", "crypto/md5", "crypto/sha1", "crypto/sha256",
+            "text/template", "html/template", "database/sql", "go/ast", "go/parser"
+        }:
+            return True
+
+        if any(module_name.startswith(pkg) for pkg in java_stdlib):
+            return True
+
+        module_root = module_name.split(".")[0].split("/")[0]
+        return module_root in popular_libs
 
     def _is_special_function(self, name: str, language: str) -> bool:
         if language == "Python":
